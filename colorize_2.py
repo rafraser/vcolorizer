@@ -1,6 +1,7 @@
 from PIL import Image, ImageChops
 import os
 import time
+import subprocess
 
 # Get a integer tuple format of the current color
 # eg. {255, 150, 255}
@@ -23,6 +24,19 @@ def cstrf(tuple):
 # Returns a float format tuple with strings and newline
 def cfstrf(tuple, strength):
     return '"' + color_to_fstring(tuple, strength) + '"\n'
+    
+def convert_png_folder(indir, outdir, format='dxt5', pause=False):
+    search = indir + '\*.png'
+    args = ['./VTFCmd.exe', '-folder', search, '-output', outdir, '-format', format, '-silent']
+    sp = subprocess.Popen(args)
+    if pause:
+        sp.wait()
+    
+def convert_file(infile, format='dxt5', pause=False):
+    args = ['./VTFCmd.exe', '-file', infile, '-format', format, '-silent']
+    sp = subprocess.Popen(args)
+    if pause:
+        sp.wait()
 
 # Define colors to add
 colors = {
@@ -99,6 +113,17 @@ for path in os.listdir('vmt'):
         except Exception as e:
             mask_mode = False
             pass
+            
+        # Convert normal map to VTF (if it exists)
+        if os.path.isfile('norms/' + file_name + '.png'):
+            convert_file('norms/' + file_name + '.png', format='bgr888', pause=True)
+            os.rename('norms/' + file_name + '.vtf', directory_fout + file_name + '_norm.vtf')
+            
+        # Convert envmapmask to VTF (if it exists)
+        if os.path.isfile('envmapmasks/' + file_name + '.png'):
+            convert_file('envmapmasks/' + file_name + '.png', format='dxt5', pause=True)
+            os.rename('envmapmasks/' + file_name + '.vtf', directory_fout + file_name + '_envmapmask.vtf')
+            
     
     # Iterate over each color and create a new .vmt & colorized .png for each
     for key in colors:
@@ -127,4 +152,6 @@ for path in os.listdir('vmt'):
             # Tint the image directly (no mask)
             new_image = ImageChops.multiply(color_image, base_image)
             new_image.save(directory_pout + file_name + '_' + key + '.png')
-        
+    
+    # Finish off by converting to VTF
+    convert_png_folder(directory_pout, directory_fout)
