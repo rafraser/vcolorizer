@@ -1,3 +1,7 @@
 *
 !*.py
 !.gitignore
+!envmapmasks/example.png
+!masks/example.png
+!input/example.png
+!vmt/example.vmt
