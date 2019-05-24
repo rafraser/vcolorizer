@@ -85,7 +85,7 @@ os.mkdir(directory_fout)
 
 # Precache each color image
 for key in colors:
-    color_images[key] = Image.new('RGB', (512, 512), colors[key])
+    color_images[key] = Image.new('RGBA', (512, 512), colors[key])
 
 for path in os.listdir('vmt'):
     file_name, ext = os.path.splitext(path)

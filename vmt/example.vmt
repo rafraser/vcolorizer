@@ -1,0 +1,7 @@
+ColorEnvMap:1.0
+LightmappedGeneric
+{   
+    $basetexture    fluffy/colorizer/example
+    $envmap         env_cubemap
+    $envmapmask     fluffy/colorizer/example_envmapmask
+}
