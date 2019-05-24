@@ -3,29 +3,34 @@ import os
 import time
 import subprocess
 
-# Get a integer tuple format of the current color
-# eg. {255, 150, 255}
 def color_to_string(tuple):
+    """ 
+    Get a integer tuple format of the current color
+    eg. {255, 150, 255}
+    """
     return "{" + str(tuple[0]) + " " + str(tuple[1]) + " " + str(tuple[2]) + "}"
 
-# Get a float tuple format of the current color
-# Strength is a float scale to multiply bytearray
-# eg. [0.1, 0.2, 0.3]
 def color_to_fstring(tuple, strength):
+    """
+    Get a float tuple format of the current color
+    Strength is a float scale to multiply bytearray
+    eg. [0.1, 0.2, 0.3]
+    """
     r = str(round( (tuple[0]/255)*strength, 2))
     g = str(round( (tuple[1]/255)*strength, 2))
     b = str(round( (tuple[2]/255)*strength, 2))
     return "[" + r + " " + g + " " + b + "]"
 
-# Returns a integer format tuple with strings and newline
 def cstrf(tuple):
+    """Returns a integer format tuple with strings and newline"""
     return '"' + color_to_string(tuple) + '"\n'
 
-# Returns a float format tuple with strings and newline
 def cfstrf(tuple, strength):
+    """Returns a float format tuple with strings and newline"""
     return '"' + color_to_fstring(tuple, strength) + '"\n'
     
 def convert_png_folder(indir, outdir, format='dxt5', pause=False):
+    """Use VTFCmd.exe to convert an entire folder to VTF"""
     search = indir + '\*.png'
     args = ['./VTFCmd.exe', '-folder', search, '-output', outdir, '-format', format, '-silent']
     sp = subprocess.Popen(args)
@@ -33,59 +38,84 @@ def convert_png_folder(indir, outdir, format='dxt5', pause=False):
         sp.wait()
     
 def convert_file(infile, format='dxt5', pause=False):
+    """Use VTFCmd.exe to convert a single file to VTF"""
     args = ['./VTFCmd.exe', '-file', infile, '-format', format, '-silent']
     sp = subprocess.Popen(args)
     if pause:
         sp.wait()
-
-# Define colors to add
-colors = {
-    "orange": (230, 120, 23),
-    "white": (255, 255, 255),
-    "silver": (222, 232, 235),
-    "gray": (182, 182, 182),
-    "tan": (210, 180, 140),
-    "navy": (26, 46, 73),
-    "purple": (107, 96, 158),
-    "green": (136, 212, 83),
-    "blue": (100, 179, 211),
-    "orange": (230, 120, 23),
-    "night": (47, 54, 64),
-    "yellow": (251, 197, 49),
-    "red": (231, 76, 60),
+        
+def normalize_colors(colors):
+    """
+    Normalize an array of colors
+    This turns an array of 0-255 colors to 0-1 colors
+    """
+    normalized = {}
+    for c in colors:
+        vec = colors[c]
+        if vec[0] + vec[1] + vec[2] < 3:
+            # It's highly likely that this color is already normal
+            # Store it as-is
+            normalized[c] = vec
+        else:
+            # Divide each component by 255
+            normalized[c] = (vec[0]/255, vec[1]/255, vec[2]/255)
     
-    "flat_green": (76, 209, 55),
-    "flat_blue": (0, 168, 255),
-    "flat_purple": (156, 136, 255),
-    "flat_yellow": (251, 197, 49),
-    "flat_red": (232, 65, 24),
-    "flat_pink": (255, 159, 243),
-    "flat_orange": (230, 126, 34),
-    "flat_lime": (123, 237, 159),
-    "flat_watermelon": (255, 107, 129),
-    "flat_clouds": (236, 240, 241),
-    "flat_gray": (149, 165, 166),
-    "flat_fuchsia": (179, 55, 113),
-    "flat_turquoise": (18, 203, 196),
-    "flat_violet": (95, 39, 205),
-    "flat_sky": (126, 214, 223)
-}
-
-color_images = {}
+    return normalized
+    
+def load_palette_file(filename):
+    """
+    Loads a color palette from a file
+    """
+    colors = {}
+    for line in open(filename):
+        line = line.strip().split(':')
+        name = line[0]
+        
+        if '.' in line[1]:
+            # Treat the colors as floats
+            color = line[1].split(',')
+            colors[name] = (float(color[0]), float(color[1]), float(color[2]))
+        else:
+            # Treat the colors as integers
+            color = line[1].split(',')
+            colors[name] = (int(color[0]), int(color[1]), int(color[2]))
+    
+    return colors
+    
+def multiply_image(img, color):
+    """
+    Multiply an image by a given color
+    This is probably terribly inefficient but hey
+    Color needs to be a normalized form (0-1)
+    """
+    channels = img.split()
+    new_chan = [None]*4
+    
+    for k in range(0, 3):
+        new_chan[k] = channels[k].point(lambda i: ((i/255)*color[k])*255)
+    new_chan[3] = channels[3]
+    img = Image.merge(img.mode, new_chan)
+    return img
+    
+colors = load_palette_file('palettes/flatui.txt')
+colors = normalize_colors(colors)
 
 # Get the timestamp
 # This is used to create unique directories for each project
 timestamp = int(time.time())
 
 # Register & create directories
-directory_pout = 'png-' + str(timestamp) + '/'
-directory_fout = 'final-' + str(timestamp) + '/'
+directory_pout = 'output/png-' + str(timestamp) + '/'
+directory_fout = 'output/final-' + str(timestamp) + '/'
+
+# Create the directory if it doesn't exist
+try:
+    os.mkdir('output')
+except:
+    pass
+
 os.mkdir(directory_pout)
 os.mkdir(directory_fout)
-
-# Precache each color image
-for key in colors:
-    color_images[key] = Image.new('RGBA', (512, 512), colors[key])
 
 for path in os.listdir('vmt'):
     file_name, ext = os.path.splitext(path)
@@ -93,7 +123,7 @@ for path in os.listdir('vmt'):
     print('Starting processing of', file_name)
     
     # Load the image to edit
-    base_image = Image.open('input/' + file_name + '.png').convert('RGB')
+    base_image = Image.open('input/' + file_name + '.png').convert('RGBA')
     color_env_map = False
     color_env_map_strength = 1
     
@@ -145,16 +175,15 @@ for path in os.listdir('vmt'):
                 vmt.write(line)
                 
         # Apply the color tinting
-        color_image = color_images[key]       
         if mask_mode:
             # Tint mask image
-            new_mask = ImageChops.multiply(color_image, mask_image)
+            new_mask = multiply_image(mask_image, colors[key])
             new_image = base_image.copy()
             new_image.paste(new_mask, mask=new_mask)
             new_image.save(directory_pout + file_name + '_' + key + '.png')
         else:
             # Tint the image directly (no mask)
-            new_image = ImageChops.multiply(color_image, base_image)
+            new_image = multiply_image(base_image, colors[key])
             new_image.save(directory_pout + file_name + '_' + key + '.png')
     
     # Finish off by converting to VTF
