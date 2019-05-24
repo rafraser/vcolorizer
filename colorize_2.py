@@ -8,7 +8,15 @@ def color_to_string(tuple):
     Get a integer tuple format of the current color
     eg. {255, 150, 255}
     """
-    return "{" + str(tuple[0]) + " " + str(tuple[1]) + " " + str(tuple[2]) + "}"
+    if tuple[0] + tuple[1] + tuple[2] <= 3:
+        # Color is in float format
+        r = str(int(tuple[0]*255))
+        g = str(int(tuple[1]*255))
+        b = str(int(tuple[2]*255))
+        return "{" + r + " " + g + " " + b + "}"
+    else:
+        # Color is already in integer format
+        return "{" + str(tuple[0]) + " " + str(tuple[1]) + " " + str(tuple[2]) + "}"
 
 def color_to_fstring(tuple, strength):
     """
@@ -16,10 +24,15 @@ def color_to_fstring(tuple, strength):
     Strength is a float scale to multiply bytearray
     eg. [0.1, 0.2, 0.3]
     """
-    r = str(round( (tuple[0]/255)*strength, 2))
-    g = str(round( (tuple[1]/255)*strength, 2))
-    b = str(round( (tuple[2]/255)*strength, 2))
-    return "[" + r + " " + g + " " + b + "]"
+    if tuple[0] + tuple[1] + tuple[2] <= 3:
+        # Color is already in float format
+        return "[" + str(tuple[0]) + " " + str(tuple[1]) + " " + str(tuple[2]) + "]"
+    else:
+        # Color is in integer format
+        r = str(round((tuple[0]/255)*strength, 2))
+        g = str(round((tuple[1]/255)*strength, 2))
+        b = str(round((tuple[2]/255)*strength, 2))
+        return "[" + r + " " + g + " " + b + "]"
 
 def cstrf(tuple):
     """Returns a integer format tuple with strings and newline"""
@@ -58,7 +71,10 @@ def normalize_colors(colors):
             normalized[c] = vec
         else:
             # Divide each component by 255
-            normalized[c] = (vec[0]/255, vec[1]/255, vec[2]/255)
+            r = round(vec[0]/255, 4)
+            g = round(vec[1]/255, 4)
+            b = round(vec[2]/255, 4)
+            normalized[c] = (r, g, b)
     
     return normalized
     
@@ -97,7 +113,7 @@ def multiply_image(img, color):
     img = Image.merge(img.mode, new_chan)
     return img
     
-def process_vmt(outfile, lines, name, color):
+def process_vmt(outfile, texname, lines, colname, color):
     """
     Process a given VMT
     This is pretty simple currently:
@@ -105,20 +121,22 @@ def process_vmt(outfile, lines, name, color):
      - check for colorable envmap property & add that if needed
     """
     # Check for colorable envmap property
+    new_lines = lines.copy()
+    
     color_env_map = False
     color_env_map_strength = 1
-    if lines[0].strip().startswith('ColorEnvMap'):
+    if new_lines[0].strip().startswith('ColorEnvMap'):
         color_env_map_strength = float(lines[0].strip().split(':')[1])
         color_env_map = True
-        lines.pop(0)
+        new_lines.pop(0)
        
     # Copy lines from template and add color
-    new_lines = lines.copy()
-    new_lines[2] = new_lines[2].replace(file_name, file_name + '_' + key)
+    new_lines[2] = new_lines[2].replace(texname, texname + '_' + colname)
         
     # If applicable, add a special colorizer for the envmap
     # messy line i know i'm sorry
     if color_env_map:
+        print(color, cfstrf(color, color_env_map_strength))
         new_lines.insert(-1, '    $envmaptint     ' + cfstrf(color, color_env_map_strength))
     
     # Write the output to the new file
@@ -141,77 +159,96 @@ def process_color_base(base, color):
     Colorize an image with no mask and return the result
     """
     return multiply_image(base, color)
-
-colors = load_palette_file('palettes/flatui.txt')
-colors = normalize_colors(colors)
-
-# Get the timestamp
-# This is used to create unique directories for each project
-timestamp = int(time.time())
-
-# Register & create directories
-directory_pout = 'output/png-' + str(timestamp) + '/'
-directory_fout = 'output/final-' + str(timestamp) + '/'
-
-# Create the directory if it doesn't exist
-try:
-    os.mkdir('output')
-except:
-    pass
-
-os.mkdir(directory_pout)
-os.mkdir(directory_fout)
-
-for path in os.listdir('vmt'):
-    file_name, ext = os.path.splitext(path)
-    print('Starting processing of', file_name)
     
-    # Load the VMT for the image
-    lines = []
-    with open('vmt/' + file_name + '.vmt', 'r') as base:
-        lines = base.readlines()
-    
-    # Load the image to edit
-    base_image = Image.open('input/' + file_name + '.png').convert('RGBA')
-    
-    # Check for mask image for colorizing
-    try:
-        mask_image = Image.open('masks/' + file_name + '.png').convert('RGBA')
-        mask_mode = True
-    except Exception as e:
-        mask_mode = False
-        pass
-        
+def file_preprocess(filename, fdir):
+    """
+    Handles some common preprocessing tasks
+     - Converts normal maps to VTF
+     - Converts envmapmask to VTF
+     - Loads mask images if applicable
+     
+    Returns if the image has a mask, and the mask image if so
+    """
     # Convert normal map to VTF (if it exists)
-    if os.path.isfile('norms/' + file_name + '.png'):
-        print('Converting normal map to VTF...')
-        convert_file('norms/' + file_name + '.png', format='bgr888', pause=True)
-        os.rename('norms/' + file_name + '.vtf', directory_fout + file_name + '_norm.vtf')
+    if os.path.isfile('norms/' + filename + '.png'):
+        convert_file('norms/' + filename + '.png', format='bgr888', pause=True)
+        os.rename('norms/' + filename + '.vtf', fdir + file_name + '_norm.vtf')
         
     # Convert envmapmask to VTF (if it exists)
-    if os.path.isfile('envmapmasks/' + file_name + '.png'):
-        print('Converting envmapmask map to VTF...')
-        convert_file('envmapmasks/' + file_name + '.png', format='dxt5', pause=True)
-        os.rename('envmapmasks/' + file_name + '.vtf', directory_fout + file_name + '_envmapmask.vtf')
+    if os.path.isfile('envmapmasks/' + filename + '.png'):
+        convert_file('envmapmasks/' + filename + '.png', format='dxt5', pause=True)
+        os.rename('envmapmasks/' + filename + '.vtf', fdir + filename + '_envmapmask.vtf')
     
-    # Iterate over each color and create a new .vmt & colorized .png for each
-    print('Generating colored PNGs')
-    for key in colors:
-        # Create the VMT
-        process_vmt(directory_fout + file_name + '_' + key + '.vmt', lines, key, colors[key])
+    # Check for a mask image and return the result
+    try:
+        mask_image = Image.open('masks/' + filename + '.png').convert('RGBA')
+        return True, mask_image
+    except:
+        return False, None
+    
+def file_preprocess_mask(filename):
+    """
+    Similar to the above function
+    Does no VTF conversions, only checks for masks
+    """
+    # Check for a mask image and return the result
+    try:
+        mask_image = Image.open('masks/' + filename + '.png').convert('RGBA')
+        return True, mask_image
+    except:
+        return False, None
+    
+if __name__ == "__main__":
+    colors = load_palette_file('palettes/flatui.txt')
+    colors = normalize_colors(colors)
+    
+    # Get the timestamp
+    # This is used to create unique directories for each project
+    timestamp = int(time.time())
+    
+    # Register & create directories
+    directory_pout = 'output/png-' + str(timestamp) + '/'
+    directory_fout = 'output/final-' + str(timestamp) + '/'
+    
+    # Create the directory if it doesn't exist
+    try:
+        os.mkdir('output')
+    except:
+        pass
+    
+    os.mkdir(directory_pout)
+    os.mkdir(directory_fout)
+    
+    for path in os.listdir('vmt'):
+        file_name, ext = os.path.splitext(path)
+        print('Starting processing of', file_name)
         
-        # Colorize and save the image
-        colorized = None
-        if mask_mode:
-            colorized = process_color_mask(base_image, mask_image, colors[key])
-        else:
-            colorized = process_color_base(base_image, colors[key])
-        colorized.save(directory_pout + file_name + '_' + key + '.png')
+        # Load the VMT for the image
+        lines = []
+        with open('vmt/' + file_name + '.vmt', 'r') as base:
+            lines = base.readlines()
+        
+        # Load the image to edit
+        base_image = Image.open('input/' + file_name + '.png').convert('RGBA')
+        mask_mode, mask_image = file_preprocess(file_name, directory_fout)
+        # Iterate over each color and create a new .vmt & colorized .png for each
+        print('Generating colored PNGs')
+        for key in colors:
+            # Create the VMT
+            process_vmt(directory_fout + file_name + '_' + key + '.vmt', file_name, lines, key, colors[key])
+            
+            # Colorize and save the image
+            colorized = None
+            if mask_mode:
+                colorized = process_color_mask(base_image, mask_image, colors[key])
+            else:
+                colorized = process_color_base(base_image, colors[key])
+            colorized.save(directory_pout + file_name + '_' + key + '.png')
+        
+        # Finish off by converting the folder to VTF
+        print('Converting recolors to VTF')
+        convert_png_folder(directory_pout, directory_fout, pause=True)
+        print('Done!')
     
-    # Finish off by converting the folder to VTF
-    print('Converting recolors to VTF')
-    convert_png_folder(directory_pout, directory_fout, pause=True)
-    print('Done!')
-
-# Print finish message when everything is processed
-print('Finished all files. Output:', directory_fout)
+    # Print finish message when everything is processed
+    print('Finished all files. Output:', directory_fout)
