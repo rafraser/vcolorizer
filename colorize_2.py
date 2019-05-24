@@ -90,6 +90,7 @@ for key in colors:
 for path in os.listdir('vmt'):
     file_name, ext = os.path.splitext(path)
     lines = []
+    print('Starting processing of', file_name)
     
     # Load the image to edit
     base_image = Image.open('input/' + file_name + '.png').convert('RGB')
@@ -116,16 +117,19 @@ for path in os.listdir('vmt'):
             
         # Convert normal map to VTF (if it exists)
         if os.path.isfile('norms/' + file_name + '.png'):
+            print('Converting normal map to VTF...')
             convert_file('norms/' + file_name + '.png', format='bgr888', pause=True)
             os.rename('norms/' + file_name + '.vtf', directory_fout + file_name + '_norm.vtf')
             
         # Convert envmapmask to VTF (if it exists)
         if os.path.isfile('envmapmasks/' + file_name + '.png'):
+            print('Converting envmapmask map to VTF...')
             convert_file('envmapmasks/' + file_name + '.png', format='dxt5', pause=True)
             os.rename('envmapmasks/' + file_name + '.vtf', directory_fout + file_name + '_envmapmask.vtf')
             
     
     # Iterate over each color and create a new .vmt & colorized .png for each
+    print('Generating colored PNGs')
     for key in colors:
         # Copy lines from template and add color
         new_lines = lines.copy()
@@ -154,4 +158,9 @@ for path in os.listdir('vmt'):
             new_image.save(directory_pout + file_name + '_' + key + '.png')
     
     # Finish off by converting to VTF
-    convert_png_folder(directory_pout, directory_fout)
+    print('Converting recolors to VTF')
+    convert_png_folder(directory_pout, directory_fout, pause=True)
+    print('Done!')
+
+# Print finish message when everything is processed
+print('Finished all files. Output:', directory_fout)
