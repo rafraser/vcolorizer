@@ -1,5 +1,6 @@
 from PIL import Image, ImageChops
 import os
+import time
 
 # Get a integer tuple format of the current color
 # eg. {255, 150, 255}
@@ -58,6 +59,16 @@ colors = {
 
 color_images = {}
 
+# Get the timestamp
+# This is used to create unique directories for each project
+timestamp = int(time.time())
+
+# Register & create directories
+directory_pout = 'png-' + str(timestamp) + '/'
+directory_fout = 'final-' + str(timestamp) + '/'
+os.mkdir(directory_pout)
+os.mkdir(directory_fout)
+
 # Precache each color image
 for key in colors:
     color_images[key] = Image.new('RGB', (512, 512), colors[key])
@@ -67,7 +78,7 @@ for path in os.listdir('vmt'):
     lines = []
     
     # Load the image to edit
-    base_image = Image.open('png/' + file_name + '.png').convert('RGB')
+    base_image = Image.open('input/' + file_name + '.png').convert('RGB')
     color_env_map = False
     color_env_map_strength = 1
     
@@ -83,7 +94,7 @@ for path in os.listdir('vmt'):
             
         # Check for mask image for colorizing
         try:
-            mask_image = Image.open('mask/' + file_name + '.png').convert('RGBA')
+            mask_image = Image.open('masks/' + file_name + '.png').convert('RGBA')
             mask_mode = True
         except Exception as e:
             mask_mode = False
@@ -94,13 +105,13 @@ for path in os.listdir('vmt'):
         # Copy lines from template and add color
         new_lines = lines.copy()
         new_lines[2] = new_lines[2].replace(file_name, file_name + '_' + key)
+        
+        # If applicable, add a special colorizer for the envmap
         if color_env_map:
             new_lines.insert(-1, '    $envmaptint     ' + cfstrf(colors[key], color_env_map_strength))
-            
-        # new_lines.insert(3, '    $color          ' + cstrf(colors[key]))
-
+        
         # Write the output to the new file
-        with open('out/' + file_name + '_' + key + '.vmt', 'w') as vmt:
+        with open(directory_fout + file_name + '_' + key + '.vmt', 'w') as vmt:
             for line in new_lines:
                 vmt.write(line)
                 
@@ -111,9 +122,9 @@ for path in os.listdir('vmt'):
             new_mask = ImageChops.multiply(color_image, mask_image)
             new_image = base_image.copy()
             new_image.paste(new_mask, mask=new_mask)
-            new_image.save('out/' + file_name + '_' + key + '.png')
+            new_image.save(directory_pout + file_name + '_' + key + '.png')
         else:
             # Tint the image directly (no mask)
             new_image = ImageChops.multiply(color_image, base_image)
-            new_image.save('out/' + file_name + '_' + key + '.png')
+            new_image.save(directory_pout + file_name + '_' + key + '.png')
         
