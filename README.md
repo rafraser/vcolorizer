@@ -1,12 +1,32 @@
 # vcolorizer
 ### Automated texture colorizer to help out my workflow
 
-## Preamble
-This program is very user-unfriendly. Use this at risk of suffering terrible design decisions.
 ## VTFLib
 For the program to automatically convert files to .vtf; you will need to install VTFCmd from [this page](http://nemesis.thewavelength.net/index.php?c=177#p177). Place VTFCmd.exe and the required .dll files into the root directory of this program.
+
+## Preamble
+This program is designed to quickly colorize a texture and create VTFs in bulk for it.
+Three basic programs are included:
+ - colorize_2.py will process any .vmt in the vmt/ folder; with the default flatui.txt palette
+ - colorize_friendly.py will allow you to choose the vmts to process; along with what palette to use
+ - colorize_pngonly.py will allow you to choose certain files in input/ to process; this does not create VTFs at all
+ 
+To prepare your own textures for use with the program:
+ - Create a .vmt and place it into vmt/ (read further below for more information)
+ - Create a .png with the same name and place it into input/
+ - (if applicable) Create a coloring mask .png (this will be tinted and placed on the image) and place it into masks/
+ - (for vtfs) Create a bumpmap .png and place it into norms/ (you can also manually create normal maps)
+ - (for vtfs) Create a envmapmask .png and place it into envmapmasks/
+Files that are related should share the same name.
+
+When writing the VMT:
+ - ensure the basetexture and the filename are the same
+ - normals will be created as filename_norm.vtf
+ - envmapmasks will be created as filename_envmapmask.vtf
+ 
 ## Example Texture
 This repository includes a basic example texture. This will be a dev texture with slight reflectivity (with the environment map tinted with the color); this should hopefully provide enough to demonstrate how to setup folders and VMTs. It does not have a normal map.
+
 ## Folder Setup
 This program uses 5 folders for import information; you'll need to create these folders yourself.
 * input/
