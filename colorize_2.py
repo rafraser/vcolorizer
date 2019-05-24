@@ -75,11 +75,21 @@ for path in os.listdir('vmt'):
     with open('vmt/' + file_name + '.vmt', 'r') as base:
         lines = base.readlines()
         
+        # Check for colorable envmap property
         if lines[0].strip().startswith('ColorEnvMap'):
             color_env_map_strength = float(lines[0].strip().split(':')[1])
             color_env_map = True
             lines.pop(0)
-        
+            
+        # Check for mask image for colorizing
+        try:
+            mask_image = Image.open('mask/' + file_name + '.png').convert('RGBA')
+            mask_mode = True
+        except Exception as e:
+            mask_mode = False
+            pass
+    
+    # Iterate over each color and create a new .vmt & colorized .png for each
     for key in colors:
         # Copy lines from template and add color
         new_lines = lines.copy()
@@ -94,7 +104,16 @@ for path in os.listdir('vmt'):
             for line in new_lines:
                 vmt.write(line)
                 
-        color_image = color_images[key]
-        new_image = ImageChops.multiply(color_image, base_image)
-        new_image.save('out/' + file_name + '_' + key + '.png')
+        # Apply the color tinting
+        color_image = color_images[key]       
+        if mask_mode:
+            # Tint mask image
+            new_mask = ImageChops.multiply(color_image, mask_image)
+            new_image = base_image.copy()
+            new_image.paste(new_mask, mask=new_mask)
+            new_image.save('out/' + file_name + '_' + key + '.png')
+        else:
+            # Tint the image directly (no mask)
+            new_image = ImageChops.multiply(color_image, base_image)
+            new_image.save('out/' + file_name + '_' + key + '.png')
         
