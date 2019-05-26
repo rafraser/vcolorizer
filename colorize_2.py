@@ -249,11 +249,11 @@ if __name__ == "__main__":
             else:
                 colorized = process_color_base(base_image, colors[key])
             colorized.save(directory_pout + file_name + '_' + key + '.png')
-        
-        # Finish off by converting the folder to VTF
-        print('Converting recolors to VTF')
-        convert_png_folder(directory_pout, directory_fout, pause=True)
-        print('Done!')
+    
+    # Finish off by converting the folder to VTF
+    print('Converting recolors to VTF')
+    convert_png_folder(directory_pout, directory_fout, pause=True)
+    print('Done!')
     
     # Print finish message when everything is processed
     print('Finished all files. Output:', directory_fout)

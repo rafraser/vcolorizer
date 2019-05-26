@@ -52,5 +52,5 @@ for file in files:
             colorized = process_color_base(base_image, colors[key])
         colorized.save(directory_pout + file + '_' + key + '.png')
     
-    # Convert the png directory to VTF
-    convert_png_folder(directory_pout, directory_fout, pause=True)
+# Convert the png directory to VTF
+convert_png_folder(directory_pout, directory_fout, pause=True)
