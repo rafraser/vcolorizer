@@ -84,6 +84,11 @@ def load_palette_file(filename):
     """
     colors = {}
     for line in open(filename):
+        # Skip over comments
+        if line.startswith('#'):
+            continue
+            
+        # Split the line
         line = line.strip().split(':')
         name = line[0]
         
@@ -172,7 +177,7 @@ def file_preprocess(filename, fdir):
     # Convert normal map to VTF (if it exists)
     if os.path.isfile('norms/' + filename + '.png'):
         convert_file('norms/' + filename + '.png', format='bgr888', pause=True)
-        os.rename('norms/' + filename + '.vtf', fdir + file_name + '_norm.vtf')
+        os.rename('norms/' + filename + '.vtf', fdir + filename + '_norm.vtf')
         
     # Convert envmapmask to VTF (if it exists)
     if os.path.isfile('envmapmasks/' + filename + '.png'):
