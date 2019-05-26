@@ -39,6 +39,7 @@ for file in files:
     
     # Preprocess the file - converts any other files if needed
     mask_mode, mask_image = file_preprocess(file, directory_fout)
+    overlay_mode, overlay_image = file_preprocess_overlay(file)
     
     for key in colors:
         # Create the VMT
@@ -50,6 +51,12 @@ for file in files:
             colorized = process_color_mask(base_image, mask_image, colors[key])
         else:
             colorized = process_color_base(base_image, colors[key])
+        
+        # Apply overlay if applicable
+        if overlay_mode:
+            overlay_image.copy()
+            colorized.paste(overlay_image, mask=overlay_image)
+        
         colorized.save(directory_pout + file + '_' + key + '.png')
     
 # Convert the png directory to VTF

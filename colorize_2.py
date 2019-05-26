@@ -202,6 +202,17 @@ def file_preprocess_mask(filename):
         return True, mask_image
     except:
         return False, None
+        
+def file_preprocess_overlay(filename):
+    """
+    Checks if the image has an overlay
+    Returns if the overlay exists and the image if so
+    """
+    try:
+        overlay_image = Image.open('overlays/' + filename + '.png').convert('RGBA')
+        return True, overlay_image
+    except:
+        return False, None
     
 if __name__ == "__main__":
     colors = load_palette_file('palettes/flatui.txt')
@@ -236,6 +247,8 @@ if __name__ == "__main__":
         # Load the image to edit
         base_image = Image.open('input/' + file_name + '.png').convert('RGBA')
         mask_mode, mask_image = file_preprocess(file_name, directory_fout)
+        overlay_mode, overlay_image = file_preprocess_mask(file_name)
+        
         # Iterate over each color and create a new .vmt & colorized .png for each
         print('Generating colored PNGs')
         for key in colors:
@@ -248,7 +261,13 @@ if __name__ == "__main__":
                 colorized = process_color_mask(base_image, mask_image, colors[key])
             else:
                 colorized = process_color_base(base_image, colors[key])
-            colorized.save(directory_pout + file_name + '_' + key + '.png')
+            
+            # Apply overlay if applicable
+            if overlay_mode:
+                overlay_image.copy()
+                colorized.paste(overlay_image, mask=overlay_image)
+            
+            colorized.save(directory_pout + file + '_' + key + '.png')
     
     # Finish off by converting the folder to VTF
     print('Converting recolors to VTF')
