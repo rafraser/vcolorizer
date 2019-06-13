@@ -136,7 +136,7 @@ def process_vmt(outfile, texname, lines, colname, color):
         new_lines.pop(0)
        
     # Copy lines from template and add color
-    new_lines[2] = new_lines[2].replace(texname, texname + '_' + colname)
+    new_lines[2] = new_lines[2].replace('/' + texname, '/' + texname + '_' + colname)
         
     # If applicable, add a special colorizer for the envmap
     # messy line i know i'm sorry
