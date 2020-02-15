@@ -174,16 +174,26 @@ def file_preprocess(filename, fdir):
      
     Returns if the image has a mask, and the mask image if so
     """
-    # Convert normal map to VTF (if it exists)
-    if os.path.isfile('norms/' + filename + '.png'):
-        convert_file('norms/' + filename + '.png', format='bgr888', pause=True)
-        os.rename('norms/' + filename + '.vtf', fdir + filename + '_norm.vtf')
-        
-    # Convert envmapmask to VTF (if it exists)
-    if os.path.isfile('envmapmasks/' + filename + '.png'):
-        convert_file('envmapmasks/' + filename + '.png', format='dxt5', pause=True)
-        os.rename('envmapmasks/' + filename + '.vtf', fdir + filename + '_envmapmask.vtf')
-    
+    # If both a normal and envmapmask exist, do some magic
+    # Then convert this 'merged' map into a VTF
+    merged_mode, merged_image = merge_spec_into_normal(filename)
+
+    if merged_mode:
+        merged_image.save('norms/' + filename + '_merged.png')
+        convert_file('norms/' + filename + '_merged.png', format='bgr888', pause=True)
+        os.rename('norms/' + filename + '_merged.vtf', fdir + filename + '_norm.vtf')
+    else:
+        # Otherwise:
+        # Convert normal map to VTF (if it exists)
+        if os.path.isfile('norms/' + filename + '.png'):
+            convert_file('norms/' + filename + '.png', format='bgr888', pause=True)
+            os.rename('norms/' + filename + '.vtf', fdir + filename + '_norm.vtf')
+
+        # Convert envmapmask to VTF (if it exists)
+        if os.path.isfile('envmapmasks/' + filename + '.png'):
+            convert_file('envmapmasks/' + filename + '.png', format='dxt5', pause=True)
+            os.rename('envmapmasks/' + filename + '.vtf', fdir + filename + '_envmapmask.vtf')
+
     # Check for a mask image and return the result
     try:
         mask_image = Image.open('masks/' + filename + '.png').convert('RGBA')
@@ -211,6 +221,15 @@ def file_preprocess_overlay(filename):
     try:
         overlay_image = Image.open('overlays/' + filename + '.png').convert('RGBA')
         return True, overlay_image
+    except:
+        return False, None
+
+def merge_spec_into_normal(filename):
+    try:
+        normal_image = Image.open('norms/' + filename + '.png').convert('RGB')
+        spec_image = Image.open('envmapmasks/' + filename + '.png').convert('L')
+        normal_image.putalpha(spec_image)
+        return True, normal_image
     except:
         return False, None
     
