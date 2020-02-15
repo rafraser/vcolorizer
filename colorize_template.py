@@ -1,4 +1,6 @@
 from colorize_2 import *
+import argparse
+
 
 def process_vmt_template(outfile, texname, lines, colname, path):
     """
@@ -18,27 +20,28 @@ def process_vmt_template(outfile, texname, lines, colname, path):
         for line in new_lines:
             vmt.write(line)
 
-def main(palette, files, vmt_file, path):
+
+def main(args):
     # Load the color palette
-    if not palette.endswith(".txt"):
-        palette = palette + ".txt"
-    colors = load_palette_file("palettes/" + palette)
+    if not args.palette.endswith(".txt"):
+        args.palette = args.palette + ".txt"
+    colors = load_palette_file("palettes/" + args.palette)
     colors = normalize_colors(colors)
 
     # Create output directories with timestamp
     timestamp = int(time.time())
     directory_pout = "output/png-" + str(timestamp) + "/"
-    directory_fout = "output/final-" + str(timestamp) + "/" + path + "/"
+    directory_fout = "output/final-" + str(timestamp) + "/" + args.path + "/"
 
     os.makedirs(directory_pout, exist_ok=True)
     os.makedirs(directory_fout, exist_ok=True)
 
     # Load the template VMT
     lines = []
-    with open("vmt/" + vmt_file + ".vmt", "r") as base:
+    with open("vmt/" + args.template + ".vmt", "r") as base:
         lines = base.readlines()
 
-    files = files.split(",")
+    files = args.files.split(",")
     for file in files:
         print("Processing:", file + ".vmt")
 
@@ -52,7 +55,7 @@ def main(palette, files, vmt_file, path):
         for key in colors:
             # Create the VMT
             process_vmt_template(
-                directory_fout + file + "_" + key + ".vmt", file, lines, key, path,
+                directory_fout + file + "_" + key + ".vmt", file, lines, key, args.path,
             )
 
             # Colorize and save the image
@@ -73,10 +76,16 @@ def main(palette, files, vmt_file, path):
     convert_png_folder(directory_pout, directory_fout, pause=True)
 
 
-if __name__ == "__main"__:
-    palette = input("Palette to use: ")
-    files = input("Files to colorize (comma-seperated, no extension): ")
-    vmt_file = input("VMT Template: ")
-    path = input("Path: ")
-    main(palette, files, vmt_file, path)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Process a set of input textures, based on a single template VMT"
+    )
+    parser.add_argument("template", help="Template VMT to use (no extension)")
+    parser.add_argument("path", help="Output path (no trailing slash)")
+    parser.add_argument("files", help="Comma-seperated list of files to colorize")
+    parser.add_argument(
+        "--palette", help="Color palette to use in processing", default="material"
+    )
+    args = parser.parse_args()
+    main(args)
 
